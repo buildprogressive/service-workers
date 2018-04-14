@@ -59,7 +59,12 @@ addEventListener('fetch', (e) => {
       // Always go to the network to update the cache.
       // This might still hit the disk cache, but we're passing
       // the full responsibility to the browser.
-      const response = fetch(request);
+      //
+      // If the browser already started preloading the navigation request,
+      // use that reponse instead, otherwise wait until the network response returns    
+      const response = Promise.resolve(e.preloadResponse).then(
+        (preloaded) => preloaded || fetch(request)
+      );
 
       // Using waitUntil here doesn't mean that the request will only
       // receive its response once this work is done.
@@ -110,11 +115,7 @@ addEventListener('fetch', (e) => {
         // 2.b. If there is no cached version,
         //      return the pending network request and let the browser handle it
         return Promise.race([
-          // If the browser already started preloading the navigation request,
-          // use that reponse instead, otherwise wait until the network response returns
-          Promise.resolve(e.preloadResponse).then(
-            (preloaded) => preloaded || response
-          ),
+          response,
 
           // A timer that kills the network racing after two seconds
           new Promise((_, reject) => {
